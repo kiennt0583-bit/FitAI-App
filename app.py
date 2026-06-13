@@ -17,6 +17,25 @@ def load_data():
 
 df = load_data()
 
+def init_db():
+    conn = sqlite3.connect('fitai.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS workout_logs (
+            log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date DATE NOT NULL,
+            exercise_name TEXT NOT NULL,
+            set_number INTEGER,
+            reps INTEGER,
+            weight REAL
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+# Gọi hàm này ngay sau khi load_data()
+init_db()
+
 # Tạo 2 tab lớn nhất
 tab_tracker, tab_coach = st.tabs(["🚀 FitAI Tracker", "🧠 FitAI Coach"])
 
