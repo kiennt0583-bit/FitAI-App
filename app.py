@@ -155,59 +155,52 @@ with tab_history:
     else:
         st.info("Chưa có dữ liệu. Hãy bắt đầu ghi nhật ký ở tab Tracker.")
 
-# ====================== TAB COACH ======================
+# ====================== TAB COACH (AI THẬT - GROQ) ======================
 with tab_coach:
-    st.header("🧠 AI Coach - Kế hoạch cá nhân hóa")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        weight_kg = st.number_input("Cân nặng (kg)", value=70.0, step=0.1)
-        height_cm = st.number_input("Chiều cao (cm)", value=170.0, step=1.0)
-        age = st.number_input("Tuổi", value=25, step=1)
-        gender = st.selectbox("Giới tính", ["Nam", "Nữ"])
-    
-    with col2:
-        activity_level = st.selectbox("Mức độ hoạt động", [
-            "Ít vận động (ngồi văn phòng)", 
-            "Vận động nhẹ (1-3 buổi/tuần)", 
-            "Vận động trung bình (3-5 buổi/tuần)",
-            "Vận động nhiều (6-7 buổi/tuần)"
-        ])
-        goal = st.selectbox("Mục tiêu chính", ["Tăng cơ", "Giảm mỡ", "Giữ cân"])
+    st.header("🧠 FitAI Coach - Trợ lý AI cá nhân")
 
-    if st.button("📋 Tính toán & Gợi ý kế hoạch", type="primary"):
-        bmr = 10 * weight_kg + 6.25 * height_cm - 5 * age + (5 if gender == "Nam" else -161)
-        
-        multipliers = {
-            "Ít vận động (ngồi văn phòng)": 1.2,
-            "Vận động nhẹ (1-3 buổi/tuần)": 1.375,
-            "Vận động trung bình (3-5 buổi/tuần)": 1.55,
-            "Vận động nhiều (6-7 buổi/tuần)": 1.725
-        }
-        tdee = bmr * multipliers[activity_level]
-        
-        if goal == "Tăng cơ":
-            calories = tdee + 300
-            protein = weight_kg * 2.2
-        elif goal == "Giảm mỡ":
-            calories = tdee - 500
-            protein = weight_kg * 2.0
-        else:
-            calories = tdee
-            protein = weight_kg * 1.8
+    # Khởi tạo lịch sử chat
+    if "messages" not in st.session_state:
+        st.session_state.messages = [
+            {"role": "assistant", "content": "Chào bạn! Tôi là FitAI Coach 🤖\n\nTôi có thể giúp bạn về lịch tập, dinh dưỡng, kỹ thuật bài tập, progressive overload... Bạn đang cần hỗ trợ gì hôm nay?"}
+        ]
 
-        fat = calories * 0.25 / 9
-        carb = (calories - (protein * 4) - (fat * 9)) / 4
+    # Hiển thị lịch sử chat
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
 
-        st.success(f"### Calo hàng ngày: **{int(calories)} kcal**")
-        st.write(f"**Protein**: {int(protein)}g | **Carb**: {int(carb)}g | **Fat**: {int(fat)}g")
+    # Ô nhập câu hỏi
+    if prompt := st.chat_input("Hỏi tôi bất kỳ điều gì về fitness..."):
+        # Thêm tin nhắn người dùng
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        with st.chat_message("user"):
+            st.markdown(prompt)
 
-        st.write("---")
-        st.subheader("Kế hoạch tập gợi ý")
-        if goal == "Tăng cơ":
-            st.write("**Push - Pull - Legs (6 buổi/tuần)**")
-        elif goal == "Giảm mỡ":
-            st.write("**Upper/Lower + Cardio**")
-        else:
-            st.write("**Full Body 3-4 buổi/tuần**")
-        st.info("💡 Tăng dần trọng lượng khi bạn hoàn thành reps dễ dàng.")
+        # Phản hồi từ AI
+        with st.chat_message("assistant"):
+            with st.spinner("FitAI Coach đang suy nghĩ..."):
+                try:
+                    from groq import Groq
+                    
+                    client = Groq(api_key="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")
+                    
+                    response = client.chat.completions.create(
+                        model="llama-3.3-70b-versatile",
+                        messages=[
+                            {"role": "system", "content": """Bạn là FitAI Coach - một huấn luyện viên thể hình và dinh dưỡng chuyên nghiệp. 
+                            Trả lời bằng tiếng Việt, nhiệt tình, dễ hiểu, dựa trên khoa học. 
+                            Khuyến khích người dùng và luôn sẵn sàng hỏi thêm thông tin nếu cần."""},
+                            *[{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
+                        ],
+                        temperature=0.7,
+                        max_tokens=800
+                    )
+                    
+                    answer = response.choices[0].message.content
+                    st.markdown(answer)
+                    st.session_state.messages.append({"role": "assistant", "content": answer})
+
+                except Exception as e:
+                    st.error(f"Lỗi kết nối AI: {e}")
+                    st.info("💡 Kiểm tra xem API Key còn hạn không hoặc thử lại sau.")
